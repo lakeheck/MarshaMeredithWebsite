@@ -1,3 +1,12 @@
+//copyright lake heckaman 2025
+//all rights reserved
+//do not distribute without permission, copy or modify without permission
+//this code is provided as is, without any warranty
+//use at own risk
+//no guarantees of any kind
+//do not sell or use for commercial purposes without permission
+//do not remove this copyright notice
+
 //get webgl context and export for use in main 
 export const canvas = document.getElementsByTagName('canvas')[0];
 export const { gl, ext } = getWebGLContext(canvas);

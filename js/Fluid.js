@@ -1,3 +1,13 @@
+//copyright lake heckaman 2025
+//all rights reserved
+//do not distribute without permission, copy or modify without permission
+//this code is provided as is, without any warranty
+//use at own risk
+//no guarantees of any kind
+//do not sell or use for commercial purposes without permission
+//do not remove this copyright notice
+
+
 
 import * as GLSL from "./Shaders.js";
 import * as LGL from "./WebGL.js";
