@@ -42,6 +42,7 @@ export class Fluid{
     pressureProgram           = new LGL.Program(GLSL.baseVertexShader, GLSL.pressureShader);
     gradientSubtractProgram   = new LGL.Program(GLSL.baseVertexShader, GLSL.gradientSubtractShader);
     noiseProgram              = new LGL.Program(GLSL.noiseVertexShader, GLSL.noiseShader); //noise generator 
+    weatherColorProgram       = new LGL.Program(GLSL.noiseVertexShader, GLSL.weatherColorShader);
     
     dye;
     velocity;
@@ -78,7 +79,7 @@ export class Fluid{
     
         //use helper function to create pairs of buffer objects that will be ping pong'd for our sim 
         //this lets us define the buffer objects that we wil want to use for feedback 
-        if (this.dye == null || this.noise == null){
+        if (this.dye == null || this.noise == null ){
             this.dye = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
             this.noise = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
         }
@@ -101,22 +102,27 @@ export class Fluid{
         //setup buffers for post process 
         this.initBloomFramebuffers();
         this.initSunraysFramebuffers();
-
+        
+        //setup the weather color map, which will be a noise field used to lookup from a palette determined by weather data
+        //easiest will be to get the devs to pass a simple palette index that can be used to index into a palette array
+        //which could just be hardcoded into the shader or expressed as a json and loaded in via js (maybe better)
+        this.weatherColorMap = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType,filtering);
+    
     }
-
+    
     initBloomFramebuffers () {
         let res = LGL.getResolution(config.BLOOM_RESOLUTION);
-    
+        
         const texType = ext.halfFloatTexType;
         const rgba = ext.formatRGBA;
         const filtering = ext.supportLinearFiltering ? gl.LINEAR : gl.NEAREST;
-    
+        
         this.bloom = LGL.createFBO(res.width, res.height, rgba.internalFormat, rgba.format, texType, filtering);
-    
+        
         this.bloomFramebuffers.length = 0;
         for (let i = 0; i < config.BLOOM_ITERATIONS; i++)
-        {
-            //right shift resolution by iteration amount 
+            {
+                //right shift resolution by iteration amount 
             // ie we reduce the resolution by a factor of 2^i, or rightshift(x,y) -> x/pow(2,y)
             // (1024 >> 1 = 512)
             // so basically creating mipmaps
@@ -174,6 +180,11 @@ export class Fluid{
         this.applyInputs(); //take from ui
         if (!config.PAUSED)
             this.step(dt); //do a calculation step 
+
+        //HERE IS WHERE TO INTEGRATE WEATHER DATA CONNECTION 
+        //probably with some global variable like this.weatherData 
+        //and the other devs could even set that attr of our Fluid class externally perhaps 
+
         this.render(null);
         requestAnimationFrame(() => this.update(this));
     }
@@ -214,7 +225,23 @@ export class Fluid{
 
 
     step (dt) {
+
         gl.disable(gl.BLEND);
+
+        this.weatherColorProgram.bind();
+        gl.uniform1i(this.weatherColorProgram.uniforms.uWeatherMap, this.picture.attach(0));
+        gl.uniform1i(this.weatherColorProgram.uniforms.uPalette, config.PALETTE);
+        //setup paramtersfor noise 
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_time, this.noiseSeed);
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_scale, .50); //period 
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_speed, .20); //speed 
+        gl.uniform2f(this.weatherColorProgram.uniforms.u_resolution, canvas.width, canvas.height);
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_gain, .5);
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_lacunarity, 2.0);
+        
+        LGL.blit(this.weatherColorMap.write);
+        this.weatherColorMap.swap();
+
         this.noiseProgram.bind();
         gl.uniform1f(this.noiseProgram.uniforms.uPeriod, config.PERIOD); 
         gl.uniform3f(this.noiseProgram.uniforms.uTranslate, 0.0, 0.0, 0.0);
@@ -275,7 +302,7 @@ export class Fluid{
             this.splatVelProgram.bind();
             gl.uniform1i(this.splatVelProgram.uniforms.uTarget, this.velocity.read.attach(0)); 
             // gl.uniformthis.1i(splatVelProgram.uniforms.uTarget, velocity.read.attach(0));
-            gl.uniform1i(this.splatVelProgram.uniforms.uDensityMap, this.picture.attach(1)); //density map
+            gl.uniform1i(this.splatVelProgram.uniforms.uDensityMap, this.weatherColorMap.read.attach(1)); //density map
             gl.uniform1i(this.splatVelProgram.uniforms.uForceMap, this.noise.read.attach(2)); //add noise for velocity map 
             gl.uniform1f(this.splatVelProgram.uniforms.aspectRatio, canvas.width / canvas.height);
             gl.uniform1f(this.splatVelProgram.uniforms.uVelocityScale, config.VELOCITYSCALE);
@@ -287,8 +314,7 @@ export class Fluid{
             this.velocity.swap();
         }
 
-        //ADD CODE FOR WEATHER BASED COLOR MAP CALCULATION HERE
-        //AND PASS TO uColor in the splatColorProgram
+
     
         if(config.DENSITY_MAP_ENABLE){
             this.splatColorProgram.bind();
@@ -296,8 +322,8 @@ export class Fluid{
             gl.uniform1f(this.splatColorProgram.uniforms.aspectRatio, canvas.width / canvas.height);
             gl.uniform2f(this.splatColorProgram.uniforms.point, 0, 0);
             gl.uniform1i(this.splatColorProgram.uniforms.uTarget, this.dye.read.attach(0));
-            gl.uniform1i(this.splatColorProgram.uniforms.uColor, this.picture.attach(1)); //color map
-            gl.uniform1i(this.splatColorProgram.uniforms.uDensityMap, this.picture.attach(2)); //density map
+            gl.uniform1i(this.splatColorProgram.uniforms.uColor, this.weatherColorMap.read.attach(1)); //color map
+            gl.uniform1i(this.splatColorProgram.uniforms.uDensityMap, this.weatherColorMap.read.attach(2)); //density map
             gl.uniform1i(this.splatVelProgram.uniforms.uClick, 0);
             gl.uniform1f(this.splatColorProgram.uniforms.radius, this.correctRadius(config.SPLAT_RADIUS / 100.0));
             LGL.blit(this.dye.write);
@@ -326,32 +352,22 @@ export class Fluid{
     }
 
     render (target) {
-        if (config.BLOOM)
-            applyBloom(this.dye.read, bloom);
-            if (config.SUNRAYS) {
-                this.applySunrays(this.dye.read, this.dye.write, this.sunrays);
-                this.blur(this.sunrays, this.sunraysTemp, 1);
-            }
-            
-            if (target == null || !config.TRANSPARENT) {
-                gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-                gl.enable(gl.BLEND);
-            }
-            else {
-                gl.disable(gl.BLEND);
-            }
-            
-            if (!config.TRANSPARENT)
-            drawColor(target, LGL.normalizeColor(config.BACK_COLOR), this.colorProgram);
-            if (target == null && config.TRANSPARENT)
-            drawCheckerboard(target, this.checkerboardProgram);
-            if(config.DISPLAY_FLUID){
-                this.drawDisplay(target);
-            }
-            else{
-                this.drawDisplay(this.noise);
-            }
-            // LGL.blit(picture);
+
+        //set blending mode
+        if (target == null || !config.TRANSPARENT) {
+            gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
+            gl.enable(gl.BLEND);
+        }
+        else {
+            gl.disable(gl.BLEND);
+        }
+        
+        if (!config.TRANSPARENT)drawColor(target, LGL.normalizeColor(config.BACK_COLOR), this.colorProgram);
+        if (target == null && config.TRANSPARENT)drawCheckerboard(target, this.checkerboardProgram);
+
+        //draw output to screen
+        this.drawDisplay(target);
+ 
         
         }
     
@@ -362,22 +378,14 @@ export class Fluid{
         this.displayMaterial.bind();
         if (config.SHADING)
             gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
-        // gl.uniform1i(displayMaterial.uniforms.uTexture, picture.attach(0)); //this works to get the image in the background, but is not actually
-        // gl.uniform1i(displayMaterial.uniforms.uTexture, noise.read.attach(0));
         if(config.DISPLAY_FLUID){
             gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
         }
         else{
-            gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.noise.read.attach(0));
+            //DEBUG textures by replacing the attached texure buffer below with whatever 
+            //and then set config.DISPLAY_FLUID to false to see it 
+            gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.weatherColorMap.read.attach(0));
         }
-        if (config.BLOOM) {
-            gl.uniform1i(this.displayMaterial.uniforms.uBloom, this.bloom.attach(1));
-            gl.uniform1i(this.displayMaterial.uniforms.uDithering, this.ditheringTexture.attach(2));
-            let scale = getTextureScale(this.ditheringTexture, width, height);
-            gl.uniform2f(this.displayMaterial.uniforms.ditherScale, scale.x, scale.y);
-        }
-        if (config.SUNRAYS)
-            gl.uniform1i(this.displayMaterial.uniforms.uSunrays, this.sunrays.attach(3));
         LGL.blit(target);
     }
 
@@ -594,6 +602,9 @@ export class Fluid{
         mapFolder.add(config, 'FORCE_MAP_ENABLE').name('force map enable');
         mapFolder.add(config, 'DENSITY_MAP_ENABLE').name('density map enable'); //adding listen() will update the ui if the parameter value changes elsewhere in the program 
         mapFolder.add(config, 'DISPLAY_FLUID').name('Toggle Show Vel Map');
+
+        let paletteFolder = gui.addFolder('Palette');
+        paletteFolder.add(config, 'PALETTE', 0, 4).name('Palette');
         
         let noiseFolder = gui.addFolder('Velocity Map');
         noiseFolder.add(config, 'PERIOD', 0, 10.0).name('Period');
