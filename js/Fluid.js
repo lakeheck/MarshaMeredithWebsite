@@ -286,6 +286,9 @@ export class Fluid{
             LGL.blit(this.velocity.write);
             this.velocity.swap();
         }
+
+        //ADD CODE FOR WEATHER BASED COLOR MAP CALCULATION HERE
+        //AND PASS TO uColor in the splatColorProgram
     
         if(config.DENSITY_MAP_ENABLE){
             this.splatColorProgram.bind();
