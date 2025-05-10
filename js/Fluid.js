@@ -184,6 +184,7 @@ export class Fluid{
         dt = Math.min(dt, 0.016666); //never want to update slower than 60fps
         this.lastUpdateTime = now;
         this.noiseSeed += dt * config.NOISE_TRANSLATE_SPEED;
+        
         if (LGL.resizeCanvas() || (this.dye.width != config.DYE_RESOLUTION && this.dye.height != config.DYE_RESOLUTION) || (this.velocity.width != config.SIM_RESOLUTION && this.velocity.height != config.SIM_RESOLUTION)) //resize if needed 
             this.initFramebuffers();
         this.updateColors(dt); //step through our sim 
@@ -191,9 +192,17 @@ export class Fluid{
         if (!config.PAUSED)
             this.step(dt); //do a calculation step 
 
-        //HERE IS WHERE TO INTEGRATE WEATHER DATA CONNECTION 
-        //probably with some global variable like this.weatherData 
-        //and the other devs could even set that attr of our Fluid class externally perhaps 
+        // Weather data integration point
+        if (this.weatherData) {
+            // Update simulation based on weather data
+            if (this.weatherData.season !== undefined) {
+                config.PALETTE = this.weatherData.season;
+            }
+            if (this.weatherData.subPalette !== undefined) {
+                config.SUB_PALETTE = this.weatherData.subPalette;
+            }
+            // Add more weather data integration points as needed
+        }
 
         this.render(null);
         requestAnimationFrame(() => this.update(this));
@@ -235,12 +244,12 @@ export class Fluid{
 
 
     step (dt) {
-
         gl.disable(gl.BLEND);
 
         this.weatherColorProgram.bind();
         gl.uniform1i(this.weatherColorProgram.uniforms.uWeatherMap, this.picture.attach(0));
         gl.uniform1i(this.weatherColorProgram.uniforms.uPalette, config.PALETTE);
+        gl.uniform1i(this.weatherColorProgram.uniforms.uSubPalette, config.SUB_PALETTE);
         //setup paramtersfor noise 
         gl.uniform1f(this.weatherColorProgram.uniforms.u_time, this.noiseSeed);
         gl.uniform1f(this.weatherColorProgram.uniforms.u_scale, .50); //period 
@@ -591,44 +600,32 @@ export class Fluid{
         //dat is a library developed by Googles Data Team for building JS interfaces. Needs to be included in project directory 
         var gui = new dat.GUI({ width: 300 });
     
-        gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name(parName);
-        gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('Fluid Sim Resolution');
-        
-        let fluidFolder = gui.addFolder('Fluid Settings');
-        fluidFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('Density Diffusion');
-        fluidFolder.add(config, 'FLOW', 0, 10).name('Flow');
-        fluidFolder.add(config, 'SPLAT_FLOW', 0, 1).name('Splat Flow');
-        fluidFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('Velocity Diffusion');
-        fluidFolder.add(config, 'VELOCITYSCALE', 0, 10.0).name('Velocity Scale');
-        fluidFolder.add(config, 'PRESSURE', 0.0, 1.0).name('Pressure');
-        fluidFolder.add(config, 'CURL', 0, 50).name('Vorticity').step(1);
-        fluidFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('Splat Radius');
-        fluidFolder.add({ fun: () => {
-            splatStack.push(parseInt(Math.random() * 20) + 5);
-        } }, 'fun').name('Random splats');
-        
-        
-        let mapFolder = gui.addFolder('Enable / Disable Maps');
-        mapFolder.add(config, 'FORCE_MAP_ENABLE').name('force map enable');
-        mapFolder.add(config, 'DENSITY_MAP_ENABLE').name('density map enable'); //adding listen() will update the ui if the parameter value changes elsewhere in the program 
-        mapFolder.add(config, 'DISPLAY_FLUID').name('Toggle Show Vel Map');
+        //gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name(parName);
+        //gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('Fluid Sim Resolution');
 
-        let paletteFolder = gui.addFolder('Palette');
-        paletteFolder.add(config, 'PALETTE', 0, 4).name('Palette');
+        // Add season slider (0-3 for Spring, Summer, Autumn, Winter)
+        gui.add(config, 'PALETTE', 0, 3).name('Season').step(1);
         
-        let noiseFolder = gui.addFolder('Velocity Map');
-        noiseFolder.add(config, 'PERIOD', 0, 10.0).name('Period');
-        noiseFolder.add(config, 'EXPONENT', 0, 4.0).name('Exponent');
-        noiseFolder.add(config, 'RIDGE', 0, 1.5).name('Ridge');
-        noiseFolder.add(config, 'AMP', 0, 4.0).name('Amplitude');
-        noiseFolder.add(config, 'LACUNARITY', 0, 4).name('Lacunarity');
-        noiseFolder.add(config, 'NOISE_TRANSLATE_SPEED', 0, .5).name('Noise Translate Speed');
-        noiseFolder.add(config, 'GAIN', 0.0, 1.0).name('Gain');
-        noiseFolder.add(config, 'OCTAVES', 0, 8).name('Octaves').step(1);
+        //let fluidFolder = gui.addFolder('Fluid Settings');
+        //fluidFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('Density Diffusion');
+        //fluidFolder.add(config, 'FLOW', 0, 10).name('Flow');
+        //fluidFolder.add(config, 'SPLAT_FLOW', 0, 1).name('Splat Flow');
+        //fluidFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('Velocity Diffusion');
+        //fluidFolder.add(config, 'VELOCITYSCALE', 0, 10.0).name('Velocity Scale');
+        //fluidFolder.add(config, 'PRESSURE', 0.0, 1.0).name('Pressure');
+        //fluidFolder.add(config, 'CURL', 0, 50).name('Vorticity').step(1);
+        //fluidFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('Splat Radius');
+        //fluidFolder.add({ fun: () => {
+        //    splatStack.push(parseInt(Math.random() * 20) + 5);
+        //} }, 'fun').name('Random splats');
+
+        // Add sub-palette slider (0-2 for different variations within each season)
+        gui.add(config, 'SUB_PALETTE', 0, 2).name('Sub-Palette').step(1);
         
-        gui.add(config, 'PAUSED').name('Paused').listen();
-        gui.add(config, 'RESET').name('Reset').onFinishChange(reset);
-        gui.add(config, 'RANDOM').name('Randomize').onFinishChange(randomizeParams);
+        // Add a pause toggle for convenience
+        //gui.add(config, 'PAUSED').name('Paused').listen();
+        //gui.add(config, 'RESET').name('Reset').onFinishChange(reset);
+        //gui.add(config, 'RANDOM').name('Randomize').onFinishChange(randomizeParams);
 
         //not using these 
         // let bloomFolder = gui.addFolder('Bloom');
@@ -641,15 +638,15 @@ export class Fluid{
         // sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.01, 1.0).name('weight');
     
         //create a function to assign to a button, here linking my github
-        let github = gui.add({ fun : () => {
-            window.open('https://github.com/lakeheck/Fluid-Simulation-WebGL');
-            ga('send', 'event', 'link button', 'github');
-        } }, 'fun').name('Github');
-        github.__li.className = 'cr function bigFont';
-        github.__li.style.borderLeft = '3px solid #8C8C8C';
-        let githubIcon = document.createElement('span');
-        github.domElement.parentElement.appendChild(githubIcon);
-        githubIcon.className = 'icon github';
+        //let github = gui.add({ fun : () => {
+        //    window.open('https://github.com/lakeheck/Fluid-Simulation-WebGL');
+        //    ga('send', 'event', 'link button', 'github');
+        //} }, 'fun').name('Github');
+        //github.__li.className = 'cr function bigFont';
+        //github.__li.style.borderLeft = '3px solid #8C8C8C';
+        //let githubIcon = document.createElement('span');
+        //github.domElement.parentElement.appendChild(githubIcon);
+        //githubIcon.className = 'icon github';
     
         if (LGL.isMobile())
             gui.close();

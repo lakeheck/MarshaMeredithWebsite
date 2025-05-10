@@ -1,4 +1,3 @@
-
 //copyright lake heckaman 2025
 //all rights reserved
 //do not distribute without permission, copy or modify without permission
@@ -52,5 +51,6 @@ export const config = {
     DISPLAY_FLUID: true,
     RESET: false,
     RANDOM: false,
-    PALETTE: 0
+    PALETTE: 0,
+    SUB_PALETTE: 0  // Sub-palette selection
 };
