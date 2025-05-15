@@ -51,16 +51,16 @@ export const config = {
     DISPLAY_FLUID: true,
     RESET: false,
     RANDOM: false,
-    PALETTE: 0,
-    SUB_PALETTE: 0,  // Sub-palette selection
+    PALETTE: 1,
+    SUB_PALETTE: 1,  // Sub-palette selection
     PALETTE_NOISE_PERIOD: 5.0,
     PALETTE_NOISE_GAIN: 0.5,
     PALETTE_NOISE_LACUNARITY: 2.0,
     PALETTE_NOISE_OCTAVES: 6,
     PALETTE_NOISE_SPEED: 0.015,
-    BRIGHTNESS: 1.0,
-    CONTRAST: 0.0,
-    GAMMA: 1.0,
+    BRIGHTNESS: 1.250,
+    CONTRAST: 0.150,
+    GAMMA: 1.5,
     LUT_MIX: 1.0,
     LUT_SIZE: 0.0
 };
