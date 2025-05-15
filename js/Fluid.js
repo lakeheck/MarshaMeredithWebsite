@@ -13,6 +13,25 @@ import * as GLSL from "./Shaders.js";
 import * as LGL from "./WebGL.js";
 import {gl , ext, canvas } from "./WebGL.js";
 import {config} from "./config.js";
+
+  function parseCubeLUT(cubeText) {
+    const lines = cubeText.split('\n');
+    let size = 0;
+    const data = [];
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === '' || trimmed.startsWith('#')) continue;
+      if (trimmed.startsWith('LUT_3D_SIZE')) {
+        size = parseInt(trimmed.split(' ')[1]);
+        continue;
+      }
+      const parts = trimmed.split(' ').filter(p => p !== '');
+      if (parts.length === 3) {
+        data.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
+      }
+    }
+    return { size, data: new Float32Array(data) };
+  }
 export class Fluid{
 
     constructor(gl){
@@ -117,7 +136,7 @@ export class Fluid{
         //easiest will be to get the devs to pass a simple palette index that can be used to index into a palette array
         //which could just be hardcoded into the shader or expressed as a json and loaded in via js (maybe better)
         this.weatherColorMap = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType,filtering);
-    
+
     }
     
     initBloomFramebuffers () {
@@ -408,8 +427,6 @@ export class Fluid{
             gl.uniform1f(this.displayMaterial.uniforms.uContrast, config.CONTRAST);
             gl.uniform1f(this.displayMaterial.uniforms.uGamma, config.GAMMA);
             gl.uniform1f(this.displayMaterial.uniforms.uLUTMix, config.LUT_MIX);
-            gl.uniform1f(this.displayMaterial.uniforms.uLUTSize, config.LUT_SIZE);
-            
             gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
         }
         else{
@@ -628,11 +645,11 @@ export class Fluid{
         gui.add(config, 'CONTRAST', -1, 1).name('Contrast').step(0.01);
         gui.add(config, 'GAMMA', .5, 1.5).name('Gamma').step(0.001);
         gui.add(config, 'LUT_MIX', 0, 1).name('LUT Mix').step(0.01);
+        gui.add(config, 'SPLAT_FLOW', 0, 1).name('Click Flow');
         
         let fluidFolder = gui.addFolder('Fluid Settings');
         fluidFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('Density Diffusion');
         fluidFolder.add(config, 'FLOW', 0, 10).name('Flow');
-        fluidFolder.add(config, 'SPLAT_FLOW', 0, 1).name('Splat Flow');
         fluidFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('Velocity Diffusion');
         fluidFolder.add(config, 'VELOCITYSCALE', 0, 10.0).name('Velocity Scale');
         fluidFolder.add(config, 'PRESSURE', 0.0, 1.0).name('Pressure');

@@ -11,7 +11,7 @@ export const config = {
     DYE_RESOLUTION: 512, //output res 
     ASPECT: 1.0,
     FLOW: 8.4,
-    SPLAT_FLOW: 0.5,
+    SPLAT_FLOW: 0.15,
     VELOCITYSCALE: 1.0,
     CAPTURE_RESOLUTION: 1024, //screen capture res 
     DENSITY_DISSIPATION: .85, //def need to figure out this one, think perhaps bc im squaring the color in splatColor
@@ -61,6 +61,6 @@ export const config = {
     BRIGHTNESS: 1.0,
     CONTRAST: 0.0,
     GAMMA: 1.0,
-    LUT_MIX: 0.0,
+    LUT_MIX: 1.0,
     LUT_SIZE: 0.0
 };

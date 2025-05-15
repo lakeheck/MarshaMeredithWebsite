@@ -494,6 +494,19 @@ uniform vec2 texelSize;
 
 out vec4 fragColor;
 
+// A helper function to apply the 3D LUT.
+// It assumes color values are in the [0,1] range.
+vec3 applyLUT(vec3 color, sampler3D lut, float size) {
+    if(size > 0.0) {
+        color = clamp(color, 0.0, 1.0);
+        float scale = (size - 1.0) / size;
+        float offset = 0.5 / size;
+        vec3 lutCoord = color * scale + offset;
+        return texture(lut, lutCoord).rgb;
+    }
+    return color;
+}
+
 vec3 linearToGamma (vec3 color) {
     color = max(color, vec3(0));
     return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
@@ -549,7 +562,6 @@ void main () {
 
     c = brightnessContrast(c, uBrightness, uContrast);
     c = correctGamma(c, uGamma);
-
     float a = max(c.r, max(c.g, c.b));
     fragColor = vec4(mix(orignColor, c, uLUTMix), a);
 }

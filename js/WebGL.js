@@ -567,7 +567,12 @@ export function createDoubleFBO (w, h, internalFormat, format, type, param) {
     }
 }
 
-
+export function createTexture3D (data, width, height, depth) {
+    const texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_3D, texture);
+    gl.texImage3D(gl.TEXTURE_3D, 0, gl.RGB, width, height, depth, 0, gl.RGB, gl.FLOAT, data);
+    return texture;
+}
 
 
 export function createProgram (vertexShader, fragmentShader) {
