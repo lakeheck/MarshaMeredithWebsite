@@ -468,15 +468,17 @@ void main () {
 }
 `);
 
-export const displayShaderSource = `
+export const displayShaderSource = `#version 300 es
 precision highp float;
 precision highp sampler2D;
+precision highp sampler3D;
 
-varying vec2 vUv;
-varying vec2 vL;
-varying vec2 vR;
-varying vec2 vT;
-varying vec2 vB;
+
+in vec2 vUv;
+in vec2 vL;
+in vec2 vR;
+in vec2 vT;
+in vec2 vB;
 uniform sampler2D uTexture;
 uniform sampler2D uBloom;
 uniform sampler2D uSunrays;
@@ -484,11 +486,13 @@ uniform sampler2D uDithering;
 uniform float uBrightness;
 uniform float uContrast;
 uniform float uGamma;
-// uniform sampler3D uLUT;
-// uniform float uLUTSize;
-// uniform float uLUTMix;
+uniform sampler3D uLUT;
+uniform float uLUTSize;
+uniform float uLUTMix;
 uniform vec2 ditherScale;
 uniform vec2 texelSize;
+
+out vec4 fragColor;
 
 vec3 linearToGamma (vec3 color) {
     color = max(color, vec3(0));
@@ -504,8 +508,9 @@ vec3 correctGamma(vec3 color, float gamma) {
 }
 
 void main () {
-    vec3 c = texture2D(uTexture, vUv).rgb;
-
+    vec3 c = texture(uTexture, vUv).rgb;
+    vec3 orignColor = c;
+    
 #ifdef SHADING
     vec3 lc = texture2D(uTexture, vL).rgb;
     vec3 rc = texture2D(uTexture, vR).rgb;
@@ -546,7 +551,7 @@ void main () {
     c = correctGamma(c, uGamma);
 
     float a = max(c.r, max(c.g, c.b));
-    gl_FragColor = vec4(c, a);
+    fragColor = vec4(mix(orignColor, c, uLUTMix), a);
 }
 `;
 

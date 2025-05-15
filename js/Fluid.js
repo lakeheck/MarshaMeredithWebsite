@@ -20,7 +20,7 @@ export class Fluid{
         this.pointers = [];
         this.splatstack = [];
         this.pointers.push(new pointerPrototype());
-        this.displayMaterial = new LGL.Material(GLSL.baseVertexShader, GLSL.displayShaderSource);
+        this.displayMaterial = new LGL.Material(GLSL.noiseVertexShader, GLSL.displayShaderSource);
         this.canvas = canvas;
         this.lastUpdateTime = 0.0;
         this.noiseSeed = 0.0;
@@ -408,6 +408,8 @@ export class Fluid{
             gl.uniform1f(this.displayMaterial.uniforms.uContrast, config.CONTRAST);
             gl.uniform1f(this.displayMaterial.uniforms.uGamma, config.GAMMA);
             gl.uniform1f(this.displayMaterial.uniforms.uLUTMix, config.LUT_MIX);
+            gl.uniform1f(this.displayMaterial.uniforms.uLUTSize, config.LUT_SIZE);
+            
             gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
         }
         else{
@@ -624,7 +626,7 @@ export class Fluid{
         gui.add(config, 'PALETTE_NOISE_SPEED', 0, 1).name('Palette Speed').step(0.01);
         gui.add(config, 'BRIGHTNESS', 0, 2).name('Brightness').step(0.01);
         gui.add(config, 'CONTRAST', -1, 1).name('Contrast').step(0.01);
-        gui.add(config, 'GAMMA', .9, 1.1).name('Gamma').step(0.001);
+        gui.add(config, 'GAMMA', .5, 1.5).name('Gamma').step(0.001);
         gui.add(config, 'LUT_MIX', 0, 1).name('LUT Mix').step(0.01);
         
         let fluidFolder = gui.addFolder('Fluid Settings');
