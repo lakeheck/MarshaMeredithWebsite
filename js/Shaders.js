@@ -808,165 +808,8 @@ uniform float u_gain;
 uniform float u_lacunarity;
 uniform float u_exponent;
 uniform float u_amplitude;
+uniform vec4 uPaletteColors[5];
 out vec4 fragColor;
-
-//////// COLOR PALETTES ////////
-// Spring palettes
-vec4 springPalette1[5] = vec4[5](
-    vec4(252.0/255.0, 250.0/255.0, 162.0/255.0, 1.0),  // Gorse Westonbirt V1
-    vec4(195.0/255.0, 190.0/255.0, 104.0/255.0, 1.0),  // Gorse Westonbirt V1
-    vec4(197.0/255.0, 174.0/255.0, 99.0/255.0, 1.0),   // Gorse Westonbirt V1
-    vec4(206.0/255.0, 179.0/255.0, 153.0/255.0, 1.0),  // Lichen - Sapperton
-    vec4(178.0/255.0, 146.0/255.0, 121.0/255.0, 1.0)   // Lichen - Sapperton
-);
-
-vec4 springPalette2[5] = vec4[5](
-    vec4(139.0/255.0, 129.0/255.0, 91.0/255.0, 1.0),   // Nettle + Iron Chavenage
-    vec4(71.0/255.0, 70.0/255.0, 47.0/255.0, 1.0),     // Nettle + Iron Chavenage
-    vec4(94.0/255.0, 102.0/255.0, 71.0/255.0, 1.0),    // Nettle + Iron Chavenage
-    vec4(162.0/255.0, 156.0/255.0, 128.0/255.0, 1.0),  // Nettle
-    vec4(113.0/255.0, 109.0/255.0, 93.0/255.0, 1.0)    // Nettle
-);
-
-vec4 springPalette3[5] = vec4[5](
-    vec4(224.0/255.0, 219.0/255.0, 186.0/255.0, 1.0),  // Daffodil - Tetbury
-    vec4(196.0/255.0, 196.0/255.0, 142.0/255.0, 1.0),  // Daffodil - Tetbury
-    vec4(149.0/255.0, 139.0/255.0, 104.0/255.0, 1.0),  // Other
-    vec4(91.0/255.0, 190.0/255.0, 159.0/255.0, 1.0),   // Other
-    vec4(169.0/255.0, 171.0/255.0, 150.0/255.0, 1.0)   // Other
-);
-
-// Summer palettes
-vec4 summerPalette1[5] = vec4[5](
-    vec4(195.0/255.0, 121.0/255.0, 116.0/255.0, 1.0),  // Rose
-    vec4(235.0/255.0, 182.0/255.0, 169.0/255.0, 1.0),  // Rose
-    vec4(209.0/255.0, 168.0/255.0, 163.0/255.0, 1.0),  // Rose
-    vec4(200.0/255.0, 112.0/255.0, 106.0/255.0, 1.0),  // Rhubarb
-    vec4(213.0/255.0, 147.0/255.0, 152.0/255.0, 1.0)   // Rhubarb
-);
-
-vec4 summerPalette2[5] = vec4[5](
-    vec4(92.0/255.0, 116.0/255.0, 162.0/255.0, 1.0),   // Delphinium
-    vec4(163.0/255.0, 177.0/255.0, 202.0/255.0, 1.0),  // Delphinium
-    vec4(184.0/255.0, 187.0/255.0, 194.0/255.0, 1.0),  // Delphinium
-    vec4(97.0/255.0, 88.0/255.0, 118.0/255.0, 1.0),    // Black Holyhocks
-    vec4(61.0/255.0, 60.0/255.0, 76.0/255.0, 1.0)      // Black Holyhocks
-);
-
-vec4 summerPalette3[5] = vec4[5](
-    vec4(120.0/255.0, 150.0/255.0, 100.0/255.0, 1.0),  // Summer greens
-    vec4(160.0/255.0, 180.0/255.0, 140.0/255.0, 1.0),  // Summer greens
-    vec4(200.0/255.0, 210.0/255.0, 180.0/255.0, 1.0),  // Summer greens
-    vec4(180.0/255.0, 200.0/255.0, 160.0/255.0, 1.0),  // Summer greens
-    vec4(140.0/255.0, 170.0/255.0, 120.0/255.0, 1.0)   // Summer greens
-);
-
-// Autumn palettes
-vec4 autumnPalette1[5] = vec4[5](
-    vec4(0.2, 0.1, 0.1, 1.0),                          // Oak Galls (black)
-    vec4(0.4, 0.2, 0.1, 1.0),                          // Oak Galls (brown)
-    vec4(0.3, 0.1, 0.2, 1.0),                          // Blackberry (dark purple)
-    vec4(0.5, 0.3, 0.2, 1.0),                          // Chestnut (brown)
-    vec4(0.2, 0.1, 0.3, 1.0)                           // Blackthorn (purple)
-);
-
-vec4 autumnPalette2[5] = vec4[5](
-    vec4(0.3, 0.2, 0.1, 1.0),                          // Acorns
-    vec4(0.4, 0.3, 0.2, 1.0),                          // Pine cones
-    vec4(0.5, 0.4, 0.3, 1.0),                          // Lighter brown
-    vec4(0.6, 0.5, 0.4, 1.0),                          // Medium brown
-    vec4(0.7, 0.6, 0.5, 1.0)                           // Light brown
-);
-
-vec4 autumnPalette3[5] = vec4[5](
-    vec4(0.8, 0.4, 0.1, 1.0),                          // Maple orange
-    vec4(0.9, 0.5, 0.2, 1.0),                          // Bright orange
-    vec4(0.7, 0.3, 0.1, 1.0),                          // Deep orange
-    vec4(0.6, 0.2, 0.1, 1.0),                          // Rust
-    vec4(0.5, 0.2, 0.1, 1.0)                           // Dark rust
-);
-
-// Winter palettes
-vec4 winterPalette1[5] = vec4[5](
-    vec4(0.1, 0.1, 0.1, 1.0),                          // Fungi (black)
-    vec4(0.3, 0.2, 0.1, 1.0),                          // Fungi (brown)
-    vec4(0.8, 0.2, 0.3, 1.0),                          // Holly Berries (dark pink)
-    vec4(0.4, 0.3, 0.2, 1.0),                          // Moss (brown)
-    vec4(0.3, 0.1, 0.3, 1.0)                           // Elderberries/Sloe berries (Purple)
-);
-
-vec4 winterPalette2[5] = vec4[5](
-    vec4(0.2, 0.2, 0.2, 1.0),                          // Dark gray
-    vec4(0.3, 0.3, 0.3, 1.0),                          // Medium gray
-    vec4(0.4, 0.4, 0.4, 1.0),                          // Light gray
-    vec4(0.5, 0.5, 0.5, 1.0),                          // Very light gray
-    vec4(0.6, 0.6, 0.6, 1.0)                           // Almost white
-);
-
-vec4 winterPalette3[5] = vec4[5](
-    vec4(0.15, 0.15, 0.2, 1.0),                        // Cool dark gray
-    vec4(0.25, 0.25, 0.3, 1.0),                        // Cool medium gray
-    vec4(0.35, 0.35, 0.4, 1.0),                        // Cool light gray
-    vec4(0.45, 0.45, 0.5, 1.0),                        // Cool very light gray
-    vec4(0.55, 0.55, 0.6, 1.0)                         // Cool almost white
-);
-
-// Get palette based on season and sub-palette
-vec4[5] getSeasonPalette(int season, int subPalette) {
-    if (season == 0) { // Spring
-        if (subPalette == 0) return springPalette1;
-        if (subPalette == 1) return springPalette2;
-        return springPalette3;
-    } else if (season == 1) { // Summer
-        if (subPalette == 0) return summerPalette1;
-        if (subPalette == 1) return summerPalette2;
-        return summerPalette3;
-    } else if (season == 2) { // Autumn
-        if (subPalette == 0) return autumnPalette1;
-        if (subPalette == 1) return autumnPalette2;
-        return autumnPalette3;
-    } else { // Winter
-        if (subPalette == 0) return winterPalette2; // Changed default to grey palette
-        if (subPalette == 1) return winterPalette1;
-        return winterPalette3;
-    }
-}
-
-vec4 lookupColor(float lu, int index){
-  vec4 pal[5] = getSeasonPalette(uPalette, index);
-  lu = fract(lu)*5.0;
-  int i = int(lu);
-  float f = fract(lu);
-  vec4 c0 = pal[i%5];
-  vec4 c1 = pal[(i+1)%5];
-  vec4 c = mix(c0, c1, f);
-  return vec4(c.rgb, 1.0);
-}
-
-vec4 lookupColor(float lu, vec4 pal[5]){
-  lu = fract(lu)*5.0;
-  int i = int(lu);
-  float f = fract(lu);
-
-  vec4 c0 = pal[i%5];
-  vec4 c1 = pal[(i+1)%5];
-  vec4 c = mix(c0, c1, f);
-
-  return vec4(c.rgb, 1.0);
-}
-
-vec4[5] mixPalette(vec4 pal[5], vec4 pal2[5], float m){
-
-  vec4 p[5] = vec4[5](
-    mix(pal[0], pal2[0], m),
-    mix(pal[1], pal2[1], m),
-    mix(pal[2], pal2[2], m),
-    mix(pal[3], pal2[3], m),
-    mix(pal[4], pal2[4], m)
-  );
-
-  return p;
-}
 
 
 float taylorInvSqrt(in float r) { return 1.79284291400159 - 0.85373472095314 * r; }
@@ -1084,7 +927,6 @@ float fbm(vec3 st, float seed){
     return t;
 }
 
-
 void main () {
     vec4 c;    
     vec2 lookup = vUv*2.0-1.0; //center on 0
@@ -1096,9 +938,14 @@ void main () {
     vec3 lookup3 = vec3(lookup, u_time*u_speed); //add time to noise for translate
     float n = fbm(lookup3, 1.0); //get noise value from fbm 
 
-    // Get the palette based on season and sub-palette
-    vec4 pal[5] = getSeasonPalette(uPalette, uSubPalette);
-    c = lookupColor(n, pal); // Use the palette we created
+    // Get the palette based on season and sub-palette (loaded from json file)
+    // we load a different palette for each season and sub-palette, so the selection is done in JS
+    float lu = fract(n)*5.0;
+    int i = int(lu);
+    float f = fract(lu);
+    vec4 c0 = uPaletteColors[i%5];
+    vec4 c1 = uPaletteColors[(i+1)%5];
+    c = mix(c0, c1, f);
     fragColor = vec4(c.rgb, 1.0); //output color 
 }
 `);

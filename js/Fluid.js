@@ -14,24 +14,18 @@ import * as LGL from "./WebGL.js";
 import {gl , ext, canvas } from "./WebGL.js";
 import {config} from "./config.js";
 
-  function parseCubeLUT(cubeText) {
-    const lines = cubeText.split('\n');
-    let size = 0;
-    const data = [];
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (trimmed === '' || trimmed.startsWith('#')) continue;
-      if (trimmed.startsWith('LUT_3D_SIZE')) {
-        size = parseInt(trimmed.split(' ')[1]);
-        continue;
-      }
-      const parts = trimmed.split(' ').filter(p => p !== '');
-      if (parts.length === 3) {
-        data.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
-      }
+// At the top of Fluid.js
+let cachedWeatherPalettes = null;
+
+// Add this static method to Fluid or as a helper
+export async function loadWeatherPalettesOnce(paletteUrl) {
+    if (!cachedWeatherPalettes) {
+        const response = await fetch(paletteUrl);
+        cachedWeatherPalettes = await response.json();
     }
-    return { size, data: new Float32Array(data) };
-  }
+    return cachedWeatherPalettes;
+}                                                                              
+
 export class Fluid{
 
     constructor(gl){
@@ -44,10 +38,10 @@ export class Fluid{
         this.lastUpdateTime = 0.0;
         this.noiseSeed = 0.0;
         this.colorUpdateTimer = 0.0;
+        this.weatherPalettes = null;
     }
 
     splatStack = [];
-
 
     //create all our shader programs 
     blurProgram               = new LGL.Program(GLSL.blurVertexShader, GLSL.blurShader);
@@ -93,6 +87,12 @@ export class Fluid{
     ditheringTexture = LGL.createTextureAsync('img/LDR_LLL1_0.png');
     
     // displayMaterial = new LGL.Material(GLSL.baseVertexShader, GLSL.displayShaderSource);
+
+    async asyncInit() {
+        this.initFramebuffers();
+        //load the palettes from the json file, palette will be selected at runtime
+        this.weatherPalettes = await loadWeatherPalettesOnce('assets/palettes.json');
+    }
 
     initFramebuffers () {
         let simRes = LGL.getResolution(config.SIM_RESOLUTION);//getResolution basically just applies view aspect ratio to the passed resolution 
@@ -185,8 +185,7 @@ export class Fluid{
     }
     
     simulate(){
-        this.updateKeywords();
-        this.initFramebuffers();
+        this.updateKeywords();        this.asyncInit(); //grab palettes from json file
         //this.multipleSplats(parseInt(Math.random() * 20) + 5);
         this.noiseSeed = 0.0; 
         this.lastUpdateTime = Date.now();
@@ -265,11 +264,21 @@ export class Fluid{
     step (dt) {
         gl.disable(gl.BLEND);
 
+        //load and select palette based on season and sub-palette selections 
+        // Map season index to string
+        const seasonNames = ['spring', 'summer', 'autumn', 'winter'];
+        const seasonKey = seasonNames[config.PALETTE];
+        const subPalette = config.SUB_PALETTE;
+        const palette = this.weatherPalettes[seasonKey][subPalette];
+        // Flatten to 1D array (for uniform upload)
+        const flatPalette = palette.flat();
+        // Bind the program and upload the uniform
         this.weatherColorProgram.bind();
+        const loc = gl.getUniformLocation(this.weatherColorProgram.program, "uPaletteColors[0]"); //note specific location for the uniform array since webgl2
+        gl.uniform4fv(loc, flatPalette);
+        //add other uniforms
         gl.uniform1i(this.weatherColorProgram.uniforms.uWeatherMap, this.picture.attach(0));
-        gl.uniform1i(this.weatherColorProgram.uniforms.uPalette, config.PALETTE);
-        gl.uniform1i(this.weatherColorProgram.uniforms.uSubPalette, config.SUB_PALETTE);
-        //setup paramtersfor noise 
+        //setup paramters for noise used to seed palette 
         gl.uniform1f(this.weatherColorProgram.uniforms.u_time, this.noiseSeed);
         gl.uniform1f(this.weatherColorProgram.uniforms.u_scale, config.PALETTE_NOISE_PERIOD); //period 
         gl.uniform1f(this.weatherColorProgram.uniforms.u_speed, config.PALETTE_NOISE_SPEED); //speed 

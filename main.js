@@ -24,6 +24,7 @@ LGL.resizeCanvas();
 
 
 let fluid = new Fluid(gl);
+await fluid.asyncInit();
 fluid.startGUI();
 fluid.simulate();
 
