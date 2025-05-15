@@ -384,69 +384,6 @@ a*=G;
 return t;
 }
 
-// Get palette based on season, weather condition, and time of day
-vec4[5] getWeatherPalette(int season, int weatherCondition, float brightness) {
-    // First get the base season palette
-    vec4[5] basePalette = getSeasonPalette(season, 0);
-    
-    // Adjust brightness based on weather and time
-    vec4[5] adjustedPalette;
-    for(int i = 0; i < 5; i++) {
-        // Adjust color based on brightness
-        vec4 color = basePalette[i];
-        
-        // Weather conditions:
-        // 0 = Clear/Sunny
-        // 1 = Partly Cloudy
-        // 2 = Cloudy
-        // 3 = Rainy
-        // 4 = Snowy
-        // 5 = Stormy
-        // 6 = Foggy
-        
-        if (weatherCondition == 0) { // Clear/Sunny
-            color.rgb *= 1.2; // Brighten
-        } else if (weatherCondition == 1) { // Partly Cloudy
-            color.rgb *= 1.1; // Slightly brighten
-        } else if (weatherCondition == 2) { // Cloudy
-            color.rgb *= 0.9; // Slightly darken
-        } else if (weatherCondition == 3) { // Rainy
-            color.rgb *= 0.8; // Darken
-        } else if (weatherCondition == 4) { // Snowy
-            color.rgb *= 1.1; // Brighten for snow
-        } else if (weatherCondition == 5) { // Stormy
-            color.rgb *= 0.7; // Significantly darken
-        } else if (weatherCondition == 6) { // Foggy
-            color.rgb *= 0.85; // Darken and desaturate
-        }
-        
-        // Apply time of day brightness
-        color.rgb *= brightness;
-        
-        // Ensure values stay in valid range
-        color.rgb = clamp(color.rgb, 0.0, 1.0);
-        
-        adjustedPalette[i] = color;
-    }
-    
-    return adjustedPalette;
-}
-
-// Helper function to calculate brightness based on time of day
-float getTimeBrightness(float hour) {
-    // Normalize hour to 0-1 range
-    float normalizedHour = hour / 24.0;
-    
-    // Calculate brightness based on time of day
-    // Peak brightness at noon (0.5), minimum at midnight (0.0)
-    float brightness = sin(normalizedHour * 3.14159);
-    
-    // Ensure minimum brightness at night
-    brightness = max(brightness, 0.2);
-    
-    return brightness;
-}
-
 void main()
 {
 //create vec3 with z value for translate
@@ -544,12 +481,26 @@ uniform sampler2D uTexture;
 uniform sampler2D uBloom;
 uniform sampler2D uSunrays;
 uniform sampler2D uDithering;
+uniform float uBrightness;
+uniform float uContrast;
+uniform float uGamma;
+// uniform sampler3D uLUT;
+// uniform float uLUTSize;
+// uniform float uLUTMix;
 uniform vec2 ditherScale;
 uniform vec2 texelSize;
 
 vec3 linearToGamma (vec3 color) {
     color = max(color, vec3(0));
     return max(1.055 * pow(color, vec3(0.416666667)) - 0.055, vec3(0));
+}
+
+vec3 brightnessContrast(vec3 color, float brightness, float contrast) {
+    return color * brightness + contrast;
+}
+
+vec3 correctGamma(vec3 color, float gamma) {
+    return pow(color, vec3(gamma));
 }
 
 void main () {
@@ -590,6 +541,9 @@ void main () {
     bloom = linearToGamma(bloom);
     c += bloom;
 #endif
+
+    c = brightnessContrast(c, uBrightness, uContrast);
+    c = correctGamma(c, uGamma);
 
     float a = max(c.r, max(c.g, c.b));
     gl_FragColor = vec4(c, a);
@@ -787,6 +741,9 @@ uniform sampler2D uTarget;
 uniform float aspectRatio;
 uniform vec2 point;
 uniform float radius;
+uniform float uGamma;
+uniform float uBrightness;
+uniform float uContrast;
 
 uniform float uFlow;
 
@@ -805,7 +762,15 @@ void main () {
     splat = smoothstep(0.0, 1.0, splat);
     splat *= uFlow;
     vec3 base = texture2D(uTarget, vUv).xyz;
-    gl_FragColor = vec4(base + splat, 1.0);
+
+
+    //color correction 
+
+    vec4 color = vec4(base + splat, 1.0);
+
+    //color correction 
+
+    gl_FragColor = color;
 }
 `);
 

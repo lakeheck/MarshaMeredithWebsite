@@ -52,5 +52,15 @@ export const config = {
     RESET: false,
     RANDOM: false,
     PALETTE: 0,
-    SUB_PALETTE: 0  // Sub-palette selection
+    SUB_PALETTE: 0,  // Sub-palette selection
+    PALETTE_NOISE_PERIOD: 5.0,
+    PALETTE_NOISE_GAIN: 0.5,
+    PALETTE_NOISE_LACUNARITY: 2.0,
+    PALETTE_NOISE_OCTAVES: 6,
+    PALETTE_NOISE_SPEED: 0.015,
+    BRIGHTNESS: 1.0,
+    CONTRAST: 0.0,
+    GAMMA: 1.0,
+    LUT_MIX: 0.0,
+    LUT_SIZE: 0.0
 };

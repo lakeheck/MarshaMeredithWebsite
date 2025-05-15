@@ -53,7 +53,7 @@ export class Fluid{
     gradientSubtractProgram   = new LGL.Program(GLSL.baseVertexShader, GLSL.gradientSubtractShader);
     noiseProgram              = new LGL.Program(GLSL.noiseVertexShader, GLSL.noiseShader); //noise generator 
     weatherColorProgram       = new LGL.Program(GLSL.noiseVertexShader, GLSL.weatherColorShader);
-    
+
     dye;
     velocity;
     divergence;
@@ -168,7 +168,7 @@ export class Fluid{
     simulate(){
         this.updateKeywords();
         this.initFramebuffers();
-        this.multipleSplats(parseInt(Math.random() * 20) + 5);
+        //this.multipleSplats(parseInt(Math.random() * 20) + 5);
         this.noiseSeed = 0.0; 
         this.lastUpdateTime = Date.now();
         this.colorUpdateTimer = 0.0;
@@ -252,11 +252,11 @@ export class Fluid{
         gl.uniform1i(this.weatherColorProgram.uniforms.uSubPalette, config.SUB_PALETTE);
         //setup paramtersfor noise 
         gl.uniform1f(this.weatherColorProgram.uniforms.u_time, this.noiseSeed);
-        gl.uniform1f(this.weatherColorProgram.uniforms.u_scale, .50); //period 
-        gl.uniform1f(this.weatherColorProgram.uniforms.u_speed, .20); //speed 
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_scale, config.PALETTE_NOISE_PERIOD); //period 
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_speed, config.PALETTE_NOISE_SPEED); //speed 
         gl.uniform2f(this.weatherColorProgram.uniforms.u_resolution, canvas.width, canvas.height);
-        gl.uniform1f(this.weatherColorProgram.uniforms.u_gain, .5);
-        gl.uniform1f(this.weatherColorProgram.uniforms.u_lacunarity, 2.0);
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_gain, config.PALETTE_NOISE_GAIN);
+        gl.uniform1f(this.weatherColorProgram.uniforms.u_lacunarity, config.PALETTE_NOISE_LACUNARITY);
         
         LGL.blit(this.weatherColorMap.write);
         this.weatherColorMap.swap();
@@ -345,6 +345,9 @@ export class Fluid{
             gl.uniform1i(this.splatColorProgram.uniforms.uDensityMap, this.weatherColorMap.read.attach(2)); //density map
             gl.uniform1i(this.splatVelProgram.uniforms.uClick, 0);
             gl.uniform1f(this.splatColorProgram.uniforms.radius, this.correctRadius(config.SPLAT_RADIUS / 100.0));
+            gl.uniform1f(this.splatColorProgram.uniforms.uBrightness, config.BRIGHTNESS);
+            gl.uniform1f(this.splatColorProgram.uniforms.uContrast, config.CONTRAST);
+            gl.uniform1f(this.splatColorProgram.uniforms.uGamma, config.GAMMA);
             LGL.blit(this.dye.write);
             this.dye.swap();
         }
@@ -360,18 +363,21 @@ export class Fluid{
         gl.uniform1f(this.advectionProgram.uniforms.dissipation, config.VELOCITY_DISSIPATION);
         LGL.blit(this.velocity.write);
         this.velocity.swap();
+
         
         if (!ext.supportLinearFiltering)
             gl.uniform2f(this.advectionProgram.uniforms.dyeTexelSize, this.dye.texelSizeX, this.dye.texelSizeY);
-            gl.uniform1i(this.advectionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
-            gl.uniform1i(this.advectionProgram.uniforms.uSource, this.dye.read.attach(1));
-            gl.uniform1f(this.advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
-            LGL.blit(this.dye.write);
+        gl.uniform1i(this.advectionProgram.uniforms.uVelocity, this.velocity.read.attach(0));
+        gl.uniform1i(this.advectionProgram.uniforms.uSource, this.dye.read.attach(1));
+        gl.uniform1f(this.advectionProgram.uniforms.dissipation, config.DENSITY_DISSIPATION);
+        LGL.blit(this.dye.write);
         this.dye.swap();
+        
+        
     }
-
+    
     render (target) {
-
+        
         //set blending mode
         if (target == null || !config.TRANSPARENT) {
             gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -383,10 +389,10 @@ export class Fluid{
         
         if (!config.TRANSPARENT)drawColor(target, LGL.normalizeColor(config.BACK_COLOR), this.colorProgram);
         if (target == null && config.TRANSPARENT)drawCheckerboard(target, this.checkerboardProgram);
-
+        
         //draw output to screen
         this.drawDisplay(target);
- 
+
         
         }
     
@@ -398,6 +404,10 @@ export class Fluid{
         if (config.SHADING)
             gl.uniform2f(this.displayMaterial.uniforms.texelSize, 1.0 / width, 1.0 / height);
         if(config.DISPLAY_FLUID){
+            gl.uniform1f(this.displayMaterial.uniforms.uBrightness, config.BRIGHTNESS);
+            gl.uniform1f(this.displayMaterial.uniforms.uContrast, config.CONTRAST);
+            gl.uniform1f(this.displayMaterial.uniforms.uGamma, config.GAMMA);
+            gl.uniform1f(this.displayMaterial.uniforms.uLUTMix, config.LUT_MIX);
             gl.uniform1i(this.displayMaterial.uniforms.uTexture, this.dye.read.attach(0));
         }
         else{
@@ -513,11 +523,11 @@ export class Fluid{
     
         //pulling the color to add to the sim from a colormap 
         this.splatColorClickProgram.bind();
-        gl.uniform1f(this.splatColorClickProgram.uniforms.uFlow, config.SPLAT_FLOW);
+        gl.uniform1f(this.splatColorClickProgram.uniforms.uFlow, config.SPLAT_FLOW/10.0);
         gl.uniform1f(this.splatColorClickProgram.uniforms.aspectRatio, canvas.width / canvas.height);
         gl.uniform2f(this.splatColorClickProgram.uniforms.point, x, y);
         gl.uniform1i(this.splatColorClickProgram.uniforms.uTarget, this.dye.read.attach(0));
-        gl.uniform1i(this.splatColorClickProgram.uniforms.uColor, this.picture.attach(1));
+        gl.uniform1i(this.splatColorClickProgram.uniforms.uColor, this.weatherColorMap.read.attach(1));
         gl.uniform1f(this.splatColorClickProgram.uniforms.radius, this.correctRadius(config.SPLAT_RADIUS / 100.0));
         LGL.blit(this.dye.write);
         this.dye.swap();
@@ -605,22 +615,31 @@ export class Fluid{
 
         // Add season slider (0-3 for Spring, Summer, Autumn, Winter)
         gui.add(config, 'PALETTE', 0, 3).name('Season').step(1);
-        
-        //let fluidFolder = gui.addFolder('Fluid Settings');
-        //fluidFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('Density Diffusion');
-        //fluidFolder.add(config, 'FLOW', 0, 10).name('Flow');
-        //fluidFolder.add(config, 'SPLAT_FLOW', 0, 1).name('Splat Flow');
-        //fluidFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('Velocity Diffusion');
-        //fluidFolder.add(config, 'VELOCITYSCALE', 0, 10.0).name('Velocity Scale');
-        //fluidFolder.add(config, 'PRESSURE', 0.0, 1.0).name('Pressure');
-        //fluidFolder.add(config, 'CURL', 0, 50).name('Vorticity').step(1);
-        //fluidFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('Splat Radius');
-        //fluidFolder.add({ fun: () => {
-        //    splatStack.push(parseInt(Math.random() * 20) + 5);
-        //} }, 'fun').name('Random splats');
-
         // Add sub-palette slider (0-2 for different variations within each season)
         gui.add(config, 'SUB_PALETTE', 0, 2).name('Sub-Palette').step(1);
+        gui.add(config, 'PALETTE_NOISE_PERIOD', 0, 10).name('Palette Period').step(0.01);
+        gui.add(config, 'PALETTE_NOISE_GAIN', 0, 1).name('Palette Gain').step(0.01);
+        gui.add(config, 'PALETTE_NOISE_LACUNARITY', 0, 10).name('Palette Lacunarity').step(0.01);
+        gui.add(config, 'PALETTE_NOISE_OCTAVES', 0, 10).name('Palette Octaves').step(1);
+        gui.add(config, 'PALETTE_NOISE_SPEED', 0, 1).name('Palette Speed').step(0.01);
+        gui.add(config, 'BRIGHTNESS', 0, 2).name('Brightness').step(0.01);
+        gui.add(config, 'CONTRAST', -1, 1).name('Contrast').step(0.01);
+        gui.add(config, 'GAMMA', .9, 1.1).name('Gamma').step(0.001);
+        gui.add(config, 'LUT_MIX', 0, 1).name('LUT Mix').step(0.01);
+        
+        let fluidFolder = gui.addFolder('Fluid Settings');
+        fluidFolder.add(config, 'DENSITY_DISSIPATION', 0, 4.0).name('Density Diffusion');
+        fluidFolder.add(config, 'FLOW', 0, 10).name('Flow');
+        fluidFolder.add(config, 'SPLAT_FLOW', 0, 1).name('Splat Flow');
+        fluidFolder.add(config, 'VELOCITY_DISSIPATION', 0, 4.0).name('Velocity Diffusion');
+        fluidFolder.add(config, 'VELOCITYSCALE', 0, 10.0).name('Velocity Scale');
+        fluidFolder.add(config, 'PRESSURE', 0.0, 1.0).name('Pressure');
+        fluidFolder.add(config, 'CURL', 0, 50).name('Vorticity').step(1);
+        fluidFolder.add(config, 'SPLAT_RADIUS', 0.01, 1.0).name('Splat Radius');
+        fluidFolder.add({ fun: () => {
+           splatStack.push(parseInt(Math.random() * 20) + 5);
+        } }, 'fun').name('Random splats');
+
         
         // Add a pause toggle for convenience
         //gui.add(config, 'PAUSED').name('Paused').listen();
