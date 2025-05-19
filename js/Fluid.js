@@ -198,9 +198,8 @@ export class Fluid{
         let now = Date.now();
         let then = this.lastUpdateTime;
         let dt = (now - then) / 1000;
-        
-        // Cap dt to prevent large jumps and maintain consistent simulation
-        dt = Math.min(dt, 0.016666); //never want to update slower than 60fps
+    
+        dt = 0.016666; //lock to 60fps
         this.lastUpdateTime = now;
         this.noiseSeed += dt * config.NOISE_TRANSLATE_SPEED;
         
