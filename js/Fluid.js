@@ -112,7 +112,7 @@ export class Fluid{
             this.dye = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
             this.noise = LGL.createDoubleFBO(dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
         }
-        else {//resize if needed 
+        else{//resize if needed 
             // this.dye = LGL.resizeDoubleFBO(this.dye, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering); // TODO this line is causing the horizontal bars on window resize
             this.noise = LGL.resizeDoubleFBO(this.noise, dyeRes.width, dyeRes.height, rgba.internalFormat, rgba.format, texType, filtering);
         }
@@ -197,8 +197,9 @@ export class Fluid{
         //time step 
         let now = Date.now();
         let then = this.lastUpdateTime;
-        // let dt = 0.016666;
         let dt = (now - then) / 1000;
+        
+        // Cap dt to prevent large jumps and maintain consistent simulation
         dt = Math.min(dt, 0.016666); //never want to update slower than 60fps
         this.lastUpdateTime = now;
         this.noiseSeed += dt * config.NOISE_TRANSLATE_SPEED;
@@ -219,11 +220,10 @@ export class Fluid{
             if (this.weatherData.subPalette !== undefined) {
                 config.SUB_PALETTE = this.weatherData.subPalette;
             }
-            // Add more weather data integration points as needed
         }
 
         this.render(null);
-        requestAnimationFrame(() => this.update(this));
+        requestAnimationFrame(() => this.update());
     }
     
     calcDeltaTime () {
