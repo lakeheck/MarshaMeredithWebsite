@@ -8,6 +8,8 @@ An interactive, web-based ink simulation using real-time weather data to generat
 2. Update palette programatically by changing config.PALETTE and config.SUB_PALETTE (e.g. based on weather API data, update those values, the visual will update automatically)
     - There are some GUI sliders hooked up in the demo version for easy exploration
 3. `main.js` is the current entry point and could be replaced by whatever integration method makes sense for the project
+    - You can interactively update the palette selection by updating `fluid.seasonIndex` and `fluid.subPaletteIndex` from the main loop, all other logic for interaction and operation is contained in `Fluid.js` 
+    - Simulation is locked to 60 fps
 
 ## Credits
 Artistic Direction: Marsha Meredith
