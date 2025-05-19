@@ -89,6 +89,15 @@ export class Fluid{
     // displayMaterial = new LGL.Material(GLSL.baseVertexShader, GLSL.displayShaderSource);
 
     async asyncInit() {
+
+        if (LGL.isMobile()) {
+            config.DYE_RESOLUTION = 256;
+            config.SIM_RESOLUTION = 128;
+        }
+        
+        
+        LGL.resizeCanvas();
+
         this.initFramebuffers();
         //load the palettes from the json file, palette will be selected at runtime
         this.weatherPalettes = await loadWeatherPalettesOnce('assets/palettes.json');
@@ -185,7 +194,8 @@ export class Fluid{
     }
     
     simulate(){
-        this.updateKeywords();        this.asyncInit(); //grab palettes from json file
+        this.updateKeywords();        
+        this.asyncInit(); //grab palettes from json file
         //this.multipleSplats(parseInt(Math.random() * 20) + 5);
         this.noiseSeed = 0.0; 
         this.lastUpdateTime = Date.now();
