@@ -39,6 +39,11 @@ export class Fluid{
         this.noiseSeed = 0.0;
         this.colorUpdateTimer = 0.0;
         this.weatherPalettes = null;
+        this.seasonIndex = config.PALETTE;
+        this.subPaletteIndex = config.SUB_PALETTE;
+        
+        // Setup event listeners
+        this.setupEventListeners();
     }
 
     splatStack = [];
@@ -89,16 +94,17 @@ export class Fluid{
     // displayMaterial = new LGL.Material(GLSL.baseVertexShader, GLSL.displayShaderSource);
 
     async asyncInit() {
-
+        // reduce resolution for mobile devices
         if (LGL.isMobile()) {
             config.DYE_RESOLUTION = 256;
             config.SIM_RESOLUTION = 128;
         }
-        
-        
+        // resize canvas to new resolution
         LGL.resizeCanvas();
 
+        // initialize framebuffers
         this.initFramebuffers();
+        
         //load the palettes from the json file, palette will be selected at runtime
         this.weatherPalettes = await loadWeatherPalettesOnce('assets/palettes.json');
     }
@@ -203,6 +209,12 @@ export class Fluid{
         this.update();
     }
 
+    setWeatherPalette(season, subPalette) {
+        if (!this.weatherData) this.weatherData = {};
+        this.weatherData.season = season;
+        this.weatherData.subPalette = subPalette;
+    }
+
     update () {
         //time step 
         let now = Date.now();
@@ -276,8 +288,8 @@ export class Fluid{
         //load and select palette based on season and sub-palette selections 
         // Map season index to string
         const seasonNames = ['spring', 'summer', 'autumn', 'winter'];
-        const seasonKey = seasonNames[config.PALETTE];
-        const subPalette = config.SUB_PALETTE;
+        const seasonKey = seasonNames[this.seasonIndex];
+        const subPalette = this.subPaletteIndex;
         const palette = this.weatherPalettes[seasonKey][subPalette];
         // Flatten to 1D array (for uniform upload)
         const flatPalette = palette.flat();
@@ -455,64 +467,6 @@ export class Fluid{
         LGL.blit(target);
     }
 
-    applyBloom (source, destination) {
-        if (this.bloomFramebuffers.length < 2)
-            return;
-    
-        let last = destination;
-    
-        gl.disable(gl.BLEND);
-        this.bloomPrefilterProgram.bind();
-        let knee = config.BLOOM_THRESHOLD * config.BLOOM_SOFT_KNEE + 0.0001;
-        let curve0 = config.BLOOM_THRESHOLD - knee;
-        let curve1 = knee * 2;
-        let curve2 = 0.25 / knee;
-        gl.uniform3f(this.bloomPrefilterProgram.uniforms.curve, curve0, curve1, curve2);
-        gl.uniform1f(this.bloomPrefilterProgram.uniforms.threshold, config.BLOOM_THRESHOLD);
-        gl.uniform1i(this.bloomPrefilterProgram.uniforms.uTexture, source.attach(0));
-        LGL.blit(last);
-    
-        this.bloomBlurProgram.bind();
-        for (let i = 0; i < bloomFramebuffers.length; i++) {
-            let dest = bloomFramebuffers[i];
-            gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-            gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
-            LGL.blit(dest);
-            last = dest;
-        }
-    
-        gl.blendFunc(gl.ONE, gl.ONE);
-        gl.enable(gl.BLEND);
-    
-        for (let i = this.bloomFramebuffers.length - 2; i >= 0; i--) {
-            let baseTex = bloomFramebuffers[i];
-            gl.uniform2f(this.bloomBlurProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-            gl.uniform1i(this.bloomBlurProgram.uniforms.uTexture, last.attach(0));
-            gl.viewport(0, 0, baseTex.width, baseTex.height);
-            LGL.blit(baseTex);
-            last = baseTex;
-        }
-    
-        gl.disable(gl.BLEND);
-        this.bloomFinalProgram.bind();
-        gl.uniform2f(this.bloomFinalProgram.uniforms.texelSize, last.texelSizeX, last.texelSizeY);
-        gl.uniform1i(this.bloomFinalProgram.uniforms.uTexture, last.attach(0));
-        gl.uniform1f(this.bloomFinalProgram.uniforms.intensity, config.BLOOM_INTENSITY);
-        LGL.blit(destination);
-    }
-
-    applySunrays (source, mask, destination) {
-        gl.disable(gl.BLEND);
-        this.sunraysMaskProgram.bind();
-        gl.uniform1i(this.sunraysMaskProgram.uniforms.uTexture, source.attach(0));
-        LGL.blit(mask);
-    
-        this.sunraysProgram.bind();
-        gl.uniform1f(this.sunraysProgram.uniforms.weight, config.SUNRAYS_WEIGHT);
-        gl.uniform1i(this.sunraysProgram.uniforms.uTexture, mask.attach(0));
-        LGL.blit(destination);
-    }
-
     blur (target, temp, iterations) {
         this.blurProgram.bind();
         for (let i = 0; i < iterations; i++) {
@@ -577,63 +531,61 @@ export class Fluid{
         return radius;
     }
 
-    setupListener(){
-
+    setupEventListeners() {
         this.canvas.addEventListener('mousedown', e => {
-            let posX = scaleByPixelRatio(e.offsetX);
-            let posY = scaleByPixelRatio(e.offsetY);
+            let posX = LGL.scaleByPixelRatio(e.offsetX);
+            let posY = LGL.scaleByPixelRatio(e.offsetY);
             let pointer = this.pointers.find(p => p.id == -1);
             if (pointer == null)
                 pointer = new pointerPrototype();
-            updatePointerDownData(pointer, -1, posX, posY);
+            this.updatePointerDownData(pointer, -1, posX, posY);
         });
-        
+
         this.canvas.addEventListener('mousemove', e => {
             let pointer = this.pointers[0];
             if (!pointer.down) return;
-            let posX = scaleByPixelRatio(e.offsetX);
-            let posY = scaleByPixelRatio(e.offsetY);
-            updatePointerMoveData(pointer, posX, posY);
+            let posX = LGL.scaleByPixelRatio(e.offsetX);
+            let posY = LGL.scaleByPixelRatio(e.offsetY);
+            this.updatePointerMoveData(pointer, posX, posY);
         });
-        
+
         window.addEventListener('mouseup', () => {
-            updatePointerUpData(this.pointers[0]);
+            this.updatePointerUpData(this.pointers[0]);
         });
-        
+
         this.canvas.addEventListener('touchstart', e => {
             e.preventDefault();
             const touches = e.targetTouches;
             while (touches.length >= this.pointers.length)
                 this.pointers.push(new pointerPrototype());
             for (let i = 0; i < touches.length; i++) {
-                let posX = scaleByPixelRatio(touches[i].pageX);
-                let posY = scaleByPixelRatio(touches[i].pageY);
-                updatePointerDownData(this.pointers[i + 1], touches[i].identifier, posX, posY, this.canvas);
+                let posX = LGL.scaleByPixelRatio(touches[i].pageX);
+                let posY = LGL.scaleByPixelRatio(touches[i].pageY);
+                this.updatePointerDownData(this.pointers[i + 1], touches[i].identifier, posX, posY);
             }
         });
-        
+
         this.canvas.addEventListener('touchmove', e => {
             e.preventDefault();
             const touches = e.targetTouches;
             for (let i = 0; i < touches.length; i++) {
                 let pointer = this.pointers[i + 1];
                 if (!pointer.down) continue;
-                let posX = scaleByPixelRatio(touches[i].pageX);
-                let posY = scaleByPixelRatio(touches[i].pageY);
-                updatePointerMoveData(pointer, posX, posY, this.canvas);
+                let posX = LGL.scaleByPixelRatio(touches[i].pageX);
+                let posY = LGL.scaleByPixelRatio(touches[i].pageY);
+                this.updatePointerMoveData(pointer, posX, posY);
             }
         }, false);
-        
+
         window.addEventListener('touchend', e => {
             const touches = e.changedTouches;
-            for (let i = 0; i < touches.length; i++)
-            {
+            for (let i = 0; i < touches.length; i++) {
                 let pointer = this.pointers.find(p => p.id == touches[i].identifier);
                 if (pointer == null) continue;
-                updatePointerUpData(pointer);
+                this.updatePointerUpData(pointer);
             }
         });
-        
+
         window.addEventListener('keydown', e => {
             if (e.code === 'KeyP')
                 config.PAUSED = !config.PAUSED;
@@ -642,18 +594,59 @@ export class Fluid{
         });
     }
 
+    updatePointerDownData(pointer, id, posX, posY) {
+        pointer.id = id;
+        pointer.down = true;
+        pointer.moved = false;
+        pointer.texcoordX = posX / this.canvas.width;
+        pointer.texcoordY = 1.0 - posY / this.canvas.height;
+        pointer.prevTexcoordX = pointer.texcoordX;
+        pointer.prevTexcoordY = pointer.texcoordY;
+        pointer.deltaX = 0;
+        pointer.deltaY = 0;
+        pointer.color = LGL.generateColor();
+    }
+
+    updatePointerMoveData(pointer, posX, posY) {
+        pointer.prevTexcoordX = pointer.texcoordX;
+        pointer.prevTexcoordY = pointer.texcoordY;
+        pointer.texcoordX = posX / this.canvas.width;
+        pointer.texcoordY = 1.0 - posY / this.canvas.height;
+        pointer.deltaX = this.correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX);
+        pointer.deltaY = this.correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY);
+        pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
+    }
+
+    updatePointerUpData(pointer) {
+        pointer.down = false;
+    }
+
+    correctDeltaX(delta) {
+        let aspectRatio = this.canvas.width / this.canvas.height;
+        if (aspectRatio < 1) delta *= aspectRatio;
+        return delta;
+    }
+
+    correctDeltaY(delta) {
+        let aspectRatio = this.canvas.width / this.canvas.height;
+        if (aspectRatio > 1) delta /= aspectRatio;
+        return delta;
+    }
+
     startGUI () {
         const parName = 'Output Resolution';
-        //dat is a library developed by Googles Data Team for building JS interfaces. Needs to be included in project directory 
         var gui = new dat.GUI({ width: 300 });
-    
-        //gui.add(config, 'DYE_RESOLUTION', { 'high': 1024, 'medium': 512, 'low': 256, 'very low': 128 }).name(parName);
-        //gui.add(config, 'SIM_RESOLUTION', { '32': 32, '64': 64, '128': 128, '256': 256 }).name('Fluid Sim Resolution');
 
         // Add season slider (0-3 for Spring, Summer, Autumn, Winter)
-        gui.add(config, 'PALETTE', 0, 3).name('Season').step(1);
+        gui.add(config, 'PALETTE', 0, 3).name('Season').step(1).onChange((value) => {
+            // Update the weather data to trigger palette change
+            this.seasonIndex = value;    
+        });
         // Add sub-palette slider (0-2 for different variations within each season)
-        gui.add(config, 'SUB_PALETTE', 0, 2).name('Sub-Palette').step(1);
+        gui.add(config, 'SUB_PALETTE', 0, 2).name('Sub-Palette').step(1).onChange((value) => {
+
+            this.subPaletteIndex = value;    
+        });
         gui.add(config, 'PALETTE_NOISE_PERIOD', 0, 10).name('Palette Period').step(0.01);
         gui.add(config, 'PALETTE_NOISE_GAIN', 0, 1).name('Palette Gain').step(0.01);
         gui.add(config, 'PALETTE_NOISE_LACUNARITY', 0, 10).name('Palette Lacunarity').step(0.01);
@@ -677,33 +670,6 @@ export class Fluid{
            splatStack.push(parseInt(Math.random() * 20) + 5);
         } }, 'fun').name('Random splats');
 
-        
-        // Add a pause toggle for convenience
-        //gui.add(config, 'PAUSED').name('Paused').listen();
-        //gui.add(config, 'RESET').name('Reset').onFinishChange(reset);
-        //gui.add(config, 'RANDOM').name('Randomize').onFinishChange(randomizeParams);
-
-        //not using these 
-        // let bloomFolder = gui.addFolder('Bloom');
-        // bloomFolder.add(config, 'BLOOM').name('enabled').onFinishChange(updateKeywords);
-        // bloomFolder.add(config, 'BLOOM_INTENSITY', 0.1, 2.0).name('intensity');
-        // bloomFolder.add(config, 'BLOOM_THRESHOLD', 0.0, 1.0).name('threshold');
-    
-        // let sunraysFolder = gui.addFolder('Sunrays');
-        // sunraysFolder.add(config, 'SUNRAYS').name('enabled').onFinishChange(this.updateKeywords);
-        // sunraysFolder.add(config, 'SUNRAYS_WEIGHT', 0.01, 1.0).name('weight');
-    
-        //create a function to assign to a button, here linking my github
-        //let github = gui.add({ fun : () => {
-        //    window.open('https://github.com/lakeheck/Fluid-Simulation-WebGL');
-        //    ga('send', 'event', 'link button', 'github');
-        //} }, 'fun').name('Github');
-        //github.__li.className = 'cr function bigFont';
-        //github.__li.style.borderLeft = '3px solid #8C8C8C';
-        //let githubIcon = document.createElement('span');
-        //github.domElement.parentElement.appendChild(githubIcon);
-        //githubIcon.className = 'icon github';
-    
         if (LGL.isMobile())
             gui.close();
 
@@ -752,42 +718,3 @@ function drawCheckerboard (target, checkerboardProgram) {
     LGL.blit(target);
 }
 
-function correctDeltaX (delta, canvas) {
-    let aspectRatio = canvas.width / canvas.height;
-    if (aspectRatio < 1) delta *= aspectRatio;
-    return delta;
-}
-
-function correctDeltaY (delta, canvas) {
-    let aspectRatio = canvas.width / canvas.height;
-    if (aspectRatio > 1) delta /= aspectRatio;
-    return delta;
-}
-
-
-function updatePointerDownData (pointer, id, posX, posY, canvas) {
-    pointer.id = id;
-    pointer.down = true;
-    pointer.moved = false;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.deltaX = 0;
-    pointer.deltaY = 0;
-    pointer.color = LGL.generateColor();
-}
-
-function updatePointerMoveData (pointer, posX, posY, canvas) {
-    pointer.prevTexcoordX = pointer.texcoordX;
-    pointer.prevTexcoordY = pointer.texcoordY;
-    pointer.texcoordX = posX / canvas.width;
-    pointer.texcoordY = 1.0 - posY / canvas.height;
-    pointer.deltaX = correctDeltaX(pointer.texcoordX - pointer.prevTexcoordX, canvas);
-    pointer.deltaY = correctDeltaY(pointer.texcoordY - pointer.prevTexcoordY, canvas);
-    pointer.moved = Math.abs(pointer.deltaX) > 0 || Math.abs(pointer.deltaY) > 0;
-}
-
-function updatePointerUpData (pointer) {
-    pointer.down = false;
-}
